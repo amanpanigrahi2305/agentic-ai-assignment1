@@ -32,10 +32,14 @@ before its next call.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+
+from harness.client import tool_result
+from tools import ToolResult
 
 
 @dataclass(frozen=True)
@@ -51,4 +55,43 @@ def load_bounds(path: Path | str = Path(__file__).parent / "bounds.yaml") -> Bou
 
 
 def run_loop(client, tools, system: str, user_message: str, bounds: Bounds, trace) -> str:
-    raise NotImplementedError("Assignment 1 Part A: write the loop")
+    messages = [{"role": "user", "content": user_message}]
+    start = time.monotonic()
+    text = ""
+    for step in range(1, bounds.max_steps + 1):
+        # The bounds are checked here, in code, before every call: the model never sees them.
+        elapsed = time.monotonic() - start
+        if elapsed >= bounds.wall_clock_s:
+            trace.end("wall_clock", f"{elapsed:.1f}s >= {bounds.wall_clock_s:g}s before step {step}")
+            return text
+        if client.total_tokens >= bounds.max_tokens:
+            trace.end("token_budget", f"{client.total_tokens:,} >= {bounds.max_tokens:,} tokens before step {step}")
+            return text
+
+        response = client.create(system=system, messages=messages, tools=tools.schemas)
+        trace.model_call(step, response)
+        text = response.text
+        if response.stop_reason == "refusal":
+            trace.end("refusal", f"step {step}")
+            return text
+        calls = response.tool_calls
+        if not calls:
+            trace.end("model_stopped", f"step {step}, stop_reason {response.stop_reason}")
+            return text
+
+        messages.append(response.assistant_message())
+        results = []
+        for call in calls:
+            begun = time.monotonic()
+            try:
+                result = tools.call(call.name, call.input)
+            except Exception as exc:  # expected failures come back as is_error results; this is not one
+                trace.tool_call(step, call, ToolResult(f"Error: {exc}", True, time.monotonic() - begun))
+                trace.end("tool_error", f"step {step}: {call.name} raised {type(exc).__name__}: {exc}")
+                return text
+            trace.tool_call(step, call, result)
+            results.append(tool_result(call, result.content, result.is_error))
+        messages.append({"role": "user", "content": results})
+
+    trace.end("turn_limit", f"{bounds.max_steps} model calls")
+    return text

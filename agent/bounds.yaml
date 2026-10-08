@@ -5,6 +5,6 @@
 # max_tokens must sit below the harness ceiling in settings.yaml
 # (session_token_ceiling), so that your loop, not the harness, ends the run.
 
-max_steps: 0        # why:
-max_tokens: 0       # why:
-wall_clock_s: 0     # why:
+max_steps: 12         # why: a triage takes about 6 calls (read, 2-4 searches, post, stop); 12 doubles that and caps a run that searches in circles
+max_tokens: 50000     # why: about 2x the estimated prompt tokens at the step limit (12*700 + 220*66 = 23K), so it binds only if tool results balloon; 1/8 of the 400K ceiling
+wall_clock_s: 300     # why: 12 calls at ~3 s is under a minute; the rest absorbs the free tier's rate-limit back-off (5-80 s per retry) and still ends a stuck run

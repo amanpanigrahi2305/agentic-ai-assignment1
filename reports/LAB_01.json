@@ -1,20 +1,20 @@
 {
   "lab": "01",
   "part0": {
-    "model_calls": null,
-    "tool_calls": null,
-    "prompt_tokens": null,
-    "cache_read_tokens": null,
-    "cache_read_share": null,
-    "first_prompt": null,
-    "last_prompt": null,
-    "cumulative_over_first": null
+    "model_calls": 21,
+    "tool_calls": 23,
+    "prompt_tokens": 399123,
+    "cache_read_tokens": 388338,
+    "cache_read_share": 0.973,
+    "first_prompt": 13445,
+    "last_prompt": 24188,
+    "cumulative_over_first": 29.69
   },
   "worst_case": {
-    "F": null,
-    "A": null,
-    "N": null,
-    "cumulative_prompt_tokens": null
+    "F": 700,
+    "A": 220,
+    "N": 12,
+    "cumulative_prompt_tokens": 22920
   },
   "results": {
     "direct": {
