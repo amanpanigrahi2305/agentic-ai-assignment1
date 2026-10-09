@@ -1,13 +1,3 @@
-"""Assignment 1, Part 0: measure how the recorded agent run's prompt grew. This file is yours.
-
-One model call can span several assistant lines in the recording, so calls are
-counted by distinct message.id. A call's prompt is everything the model read on
-it: input_tokens + cache_read_input_tokens + cache_creation_input_tokens.
-Prints the numbers and writes them into the part0 object of reports/LAB_01.json.
-
-    python -m eval.part0
-"""
-
 import json
 from pathlib import Path
 
@@ -17,13 +7,12 @@ REPORT = ROOT / "reports" / "LAB_01.json"
 
 
 def prompt_tokens(usage: dict) -> int:
-    """Everything the model read on one call: uncached input, cache reads and cache writes."""
     return (usage.get("input_tokens", 0) + usage.get("cache_read_input_tokens", 0)
             + usage.get("cache_creation_input_tokens", 0))
 
 
 def measure(path: Path = RECORDING) -> dict:
-    calls = {}  # message.id -> usage, in call order; every line of one call repeats its usage
+    calls = {}
     tool_calls = 0
     for line in path.read_text().splitlines():
         record = json.loads(line)

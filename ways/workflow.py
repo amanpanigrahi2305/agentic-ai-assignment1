@@ -18,16 +18,14 @@ import re
 from harness.formats import format_triage_comment
 from ways import read_answer, system_prompt
 
-MAX_TERMS = 4  # one search per term, so this caps the workflow's tool calls at 6
-QUOTES = " `'\"*"  # what a model wraps a term in: spaces, backticks, quotes, markdown emphasis
+MAX_TERMS = 4
+QUOTES = " `'\"*"
 
 
 def search_terms(text: str) -> list[str]:
-    """The model's search terms, one per line or comma-separated: bullets, numbering,
-    quotes and headings dropped, duplicates removed, at most MAX_TERMS."""
     terms: list[str] = []
     for line in text.splitlines():
-        if line.strip().endswith(":"):  # a heading such as "Search terms:"
+        if line.strip().endswith(":"):
             continue
         for piece in line.split(","):
             term = re.sub(r"^\s*(?:[-*•]\s+|\d+[.)]\s*)", "", piece)
@@ -38,7 +36,6 @@ def search_terms(text: str) -> list[str]:
 
 
 def gather(ctx) -> dict:
-    """The first half, steps 0 and 1: read the issue, one call for search terms, one search per term."""
     issue = ctx.call_tool(0, "read_issue", {"number": ctx.issue_number}).content
     response = ctx.client.create(
         system=system_prompt(ctx, "workflow_terms.md"),
@@ -51,7 +48,6 @@ def gather(ctx) -> dict:
 
 
 def result_paths(searches: dict) -> list[str]:
-    """Every file the searches found, in the order they first appear. A result line is path:line: text."""
     paths: list[str] = []
     for found in searches.values():
         for line in found.splitlines():
@@ -62,7 +58,6 @@ def result_paths(searches: dict) -> list[str]:
 
 
 def choose(ctx, gathered: dict) -> tuple[str, str | None]:
-    """The second half's model call, step 2: the label and the file, from the issue and the search results."""
     results = "\n\n".join(f"Search: {term}\n{found}" for term, found in gathered["searches"].items())
     files = "\n".join(f"- {path}" for path in result_paths(gathered["searches"]))
     response = ctx.client.create(

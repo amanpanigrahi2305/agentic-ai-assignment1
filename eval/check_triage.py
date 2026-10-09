@@ -22,7 +22,7 @@ from harness.formats import normalize_path, parse_triage_comment
 
 def check(tracker, run_id: str, issue_number: int, answer: dict) -> bool:
     comments = tracker.comments(run_id=run_id, issue=issue_number)
-    if len(comments) != 1:  # no comment, or a run that posted twice
+    if len(comments) != 1:
         return False
     label, file = parse_triage_comment(comments[0]["body"])
     return label == str(answer["label"]).lower() and file == normalize_path(answer["file"])

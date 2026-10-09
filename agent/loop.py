@@ -59,7 +59,6 @@ def run_loop(client, tools, system: str, user_message: str, bounds: Bounds, trac
     start = time.monotonic()
     text = ""
     for step in range(1, bounds.max_steps + 1):
-        # The bounds are checked here, in code, before every call: the model never sees them.
         elapsed = time.monotonic() - start
         if elapsed >= bounds.wall_clock_s:
             trace.end("wall_clock", f"{elapsed:.1f}s >= {bounds.wall_clock_s:g}s before step {step}")
@@ -85,7 +84,7 @@ def run_loop(client, tools, system: str, user_message: str, bounds: Bounds, trac
             begun = time.monotonic()
             try:
                 result = tools.call(call.name, call.input)
-            except Exception as exc:  # expected failures come back as is_error results; this is not one
+            except Exception as exc:
                 trace.tool_call(step, call, ToolResult(f"Error: {exc}", True, time.monotonic() - begun))
                 trace.end("tool_error", f"step {step}: {call.name} raised {type(exc).__name__}: {exc}")
                 return text

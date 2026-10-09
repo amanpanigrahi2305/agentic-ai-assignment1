@@ -8,11 +8,6 @@ worst_case, verdict) as you set it. Every field is defined in checks/FORMATS.md,
 section 7. The checker recomputes the counts and means the same way, so compute
 them here, from the traces, never by hand.
 
-One exception to "leave it as you set it": once the agent has evaluation runs,
-worst_case is replaced by the F and A measured on them (FORMATS.md, section 4),
-with N your max_steps, as Part A asks. It also prints the Part B table and the
-Part C numbers that have no field of their own (the direct-call baseline).
-
     python -m eval.summarize
 """
 
@@ -36,12 +31,10 @@ REPORT = ROOT / "reports" / "LAB_01.json"
 WAYS = ("direct", "workflow", "agent", "hybrid")
 RUNS_PER_ISSUE = 10
 SCRIPTED = {"never-stops"}
-# How a run that reached the agent's loop ends; a hybrid run that stayed in the workflow ends "completed".
 LOOP_REASONS = set(TERMINAL_REASONS) - {"completed", "crashed"}
 
 
 def load_runs(eval_issues: set[int]) -> dict[str, list[dict]]:
-    """Every finished run (it has a run_end line) of each way on the evaluation issues, scripted runs excluded."""
     runs: dict[str, list[dict]] = {way: [] for way in WAYS}
     for path in sorted((ROOT / "runs").glob("*.jsonl")):
         if path.name.startswith("_"):
@@ -68,7 +61,6 @@ def mean(values: list[float]) -> float | None:
 
 
 def nearest_rank(values: list[float], pct: float) -> float | None:
-    """The nearest-rank percentile: the smallest value with at least pct% of the values at or below it."""
     if not values:
         return None
     ordered = sorted(values)
@@ -80,7 +72,6 @@ def rounded(value: float | None, digits: int) -> float | None:
 
 
 def way_results(runs: list[dict], passed: dict[str, bool], issues: list[int]) -> dict:
-    """One way's `results` entry, every field as checks/FORMATS.md, section 7 defines it."""
     per_issue_runs, per_issue_pass, per_sweep = defaultdict(int), defaultdict(int), defaultdict(int)
     for run in runs:
         per_issue_runs[run["issue"]] += 1
@@ -112,7 +103,6 @@ def way_results(runs: list[dict], passed: dict[str, bool], issues: list[int]) ->
 
 
 def share_agent_earns_it(baseline: dict, agent: dict, issues: list[int]) -> float | None:
-    """f: the share of issues where the baseline passes fewer than 5 of 10 runs and the agent 5 or more."""
     if not baseline["runs"] or not agent["runs"]:
         return None
     won = [i for i in issues if baseline["per_issue"][str(i)] < 5 <= agent["per_issue"][str(i)]]
@@ -120,7 +110,6 @@ def share_agent_earns_it(baseline: dict, agent: dict, issues: list[int]) -> floa
 
 
 def path_entropy(agent_runs: list[dict]) -> dict:
-    """How many different tool-call sequences the agent took, and the share the three most common cover."""
     sequences = Counter(tuple(t["name"] for t in run["tool_calls"]) for run in agent_runs)
     if not agent_runs:
         return {"distinct_sequences": None, "top3_share": None}
@@ -129,7 +118,6 @@ def path_entropy(agent_runs: list[dict]) -> dict:
 
 
 def measured_worst_case(agent_runs: list[dict], n: int) -> dict:
-    """F: the mean first-call prompt; A: the mean increase in prompt from one call to the next (FORMATS.md, 4)."""
     prompts = [[c["usage"]["prompt_tokens"] for c in run["model_calls"]] for run in agent_runs if run["model_calls"]]
     f = round(mean([p[0] for p in prompts]), 1)
     a = round(mean([later - earlier for p in prompts for earlier, later in zip(p, p[1:])]), 1)
@@ -156,7 +144,6 @@ def analysis_fields(results: dict, runs: dict, issues: list[int]) -> dict:
 
 
 def print_report(results: dict, analysis: dict, issues: list[int]) -> None:
-    """The Part B table, and the Part C numbers that have no field of their own."""
     print("| Way | Passes /60 | " + " | ".join(str(i) for i in issues) + " | Sweep min-max | All 10/10 "
           "| Prompt tok | Output tok | Cached tok | p50 s | p95 s | Cost/run $ | Tool calls mean (max) |")
     print("|---" * (len(issues) + 11) + "|")
@@ -197,7 +184,7 @@ def main() -> None:
 
     report = json.loads(REPORT.read_text())
     report["results"] = results
-    report["analysis"].update(analysis)  # verdict, and any field not computed yet, stay as you set them
+    report["analysis"].update(analysis)
     if runs["agent"]:
         report["worst_case"] = measured_worst_case(runs["agent"], load_bounds().max_steps)
     REPORT.write_text(json.dumps(report, indent=2) + "\n")
